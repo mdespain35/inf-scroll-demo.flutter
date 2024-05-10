@@ -6,7 +6,7 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key}) : super(key: key);
+  const MyHomePage({super.key});
 
   @override
   _MyHomePageState createState() => _MyHomePageState();
@@ -38,7 +38,7 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     _dataSubject = BehaviorSubject<List<int>>();
     _scrollController = ScrollController()..addListener(_scrollListener);
-    loadData();
+    loadData(true);
   }
 
   @override
@@ -48,22 +48,33 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
-  void loadData() {
+  void loadData(bool down) {
     // Simulating loading data asynchronously
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 1), () {
       final newData = List.generate(_perPage, (index) => _counter * _perPage + index + 1);
-      _dataSubject.add(newData);
-      _counter++; // Increment counter for pagination
+      if (down) {
+        _dataSubject.add(newData);
+        _counter++; // Increment the counter if scrolling down
+      } else {
+        _counter--; // Decrement the counter if scrolling up
+        final oldData = List.generate(_perPage, (index) => _counter * _perPage - index);
+        _dataSubject.add(oldData.reversed.toList());
+      }
     });
   }
 
   void _scrollListener() {
-    if (_scrollController.offset >= _scrollController.position.maxScrollExtent &&
-        !_scrollController.position.outOfRange) {
-      // Reached the end, load more data
-      loadData();
-    }
+  if (_scrollController.offset >= _scrollController.position.maxScrollExtent &&
+      !_scrollController.position.outOfRange) {
+    // Reached the end, load more data
+    loadData(true);
+  } else if ((_scrollController.offset <= _scrollController.position.minScrollExtent &&
+      !_scrollController.position.outOfRange)){
+    // Scrolled to the top, load previous data
+    loadData(false);
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -83,6 +94,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 if (index < data.length) {
                   return ListTile(
                     title: Text('Item ${data[index]}'),
+                    minVerticalPadding: 50.0,
+                    textColor: Colors.green,
                   );
                 } else {
                   return const Center(
