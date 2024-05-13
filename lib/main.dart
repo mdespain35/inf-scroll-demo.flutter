@@ -32,13 +32,14 @@ class _MyHomePageState extends State<MyHomePage> {
   late ScrollController _scrollController;
   final int _perPage = 10;
   int _counter = 0;
+  bool _scrollDown = true;
 
   @override
   void initState() {
     super.initState();
     _dataSubject = BehaviorSubject<List<int>>();
     _scrollController = ScrollController()..addListener(_scrollListener);
-    loadData(true);
+    loadData();
   }
 
   @override
@@ -48,14 +49,14 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
-  void loadData(bool down) {
+  Future<void> loadData() async {
     // Simulating loading data asynchronously
-    Future.delayed(const Duration(seconds: 1), () {
+    Future.delayed(const Duration(milliseconds: 500), () {
       final newData = List.generate(_perPage, (index) => _counter * _perPage + index + 1);
-      if (down) {
+      if (_scrollDown) {
         _dataSubject.add(newData);
         _counter++; // Increment the counter if scrolling down
-      } else {
+      } else if (_counter > 1) { // Prevent scroller from scrolling past the top
         _counter--; // Decrement the counter if scrolling up
         final oldData = List.generate(_perPage, (index) => _counter * _perPage - index);
         _dataSubject.add(oldData.reversed.toList());
@@ -67,12 +68,23 @@ class _MyHomePageState extends State<MyHomePage> {
   if (_scrollController.offset >= _scrollController.position.maxScrollExtent &&
       !_scrollController.position.outOfRange) {
     // Reached the end, load more data
-    loadData(true);
+    _scrollDown = true;
+    loadData();
+    Future.delayed(const Duration(milliseconds: 500), () { // Delay to match the delay of loading data
+      _scrollController.jumpTo(_scrollController.position.minScrollExtent + 2.5);  // Make sure the focus is on the top new item
+    });
   } else if ((_scrollController.offset <= _scrollController.position.minScrollExtent &&
       !_scrollController.position.outOfRange)){
     // Scrolled to the top, load previous data
-    loadData(false);
+    _scrollDown = false;
+    loadData();
+    if (_counter > 1) {
+      Future.delayed(const Duration(milliseconds: 500), () { // Delay to match the delay of loading data
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent - 2.5); // Make sure the focus doesn't jump to the top old item
+      });
+    }
   }
+
 }
 
 
@@ -94,8 +106,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 if (index < data.length) {
                   return ListTile(
                     title: Text('Item ${data[index]}'),
-                    minVerticalPadding: 50.0,
-                    textColor: Colors.green,
+                    minVerticalPadding: 50.0, // Arbitrary number to test the actual scrolling behavior
                   );
                 } else {
                   return const Center(
